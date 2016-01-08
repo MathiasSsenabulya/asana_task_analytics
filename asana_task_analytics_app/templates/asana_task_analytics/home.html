@@ -1,0 +1,14 @@
+{% extends "asana_task_analytics/base.html" %}
+
+{% block title %}
+    Asana Task Analytics Project
+{% endblock %}
+
+
+{% block content %}
+    <h1>Asana Task Analytic Project</h1>
+<ul>
+{% for task in tag_tasks %}
+    <li>Task ID: {{ task.id }}, Task_name: {{ task.name }}</li>
+{% endfor %}
+</ul>{% endblock %}
