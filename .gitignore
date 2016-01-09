@@ -44,3 +44,12 @@ Temporary Items
 
 # Pycharm Files
 .idea
+
+# For Heroku
+*.pyc
+db.sqlite3
+__pycache__
+local_settings.py
+staticfiles
+asana
+*~
