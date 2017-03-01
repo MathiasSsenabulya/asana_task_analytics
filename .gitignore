@@ -54,6 +54,6 @@ cookies.json
 */migrations
 /static
 /media
-secrets.py
 asana_task_analytics_app/__pycache__/
 asana_task_analytics_project/__pycache__/
+/asana_task_analytics_project/secrets/
