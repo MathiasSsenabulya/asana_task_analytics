@@ -94,10 +94,10 @@ class AsanaMiwHandler(BaseMitAndMiW):
         for history_record in task_stories_list_dicts:
             if history_record['text'] == 'added to Most Important This Week':
                 added_to_miw = True
-            elif history_record['text'] == 'completed this task':
-                completed_this_task = True
             elif history_record['text'] == 'removed from Most Important This Week':
                 added_to_miw = False
+            elif history_record['text'] == 'completed this task':
+                completed_this_task = True
         if added_to_miw and not completed_this_task:
             return False
         elif added_to_miw and completed_this_task:
