@@ -54,7 +54,7 @@ class AsanaMitHandler(BaseMitAndMiW):
         :return:
         """
         top_latent_mit = list()
-        tasks = self.get_tasks_by_tag_id(settings.ASANA_TAG_ID, self.item_limit)
+        tasks = self.get_tasks_by_tag_id(settings.ASANA_MIT_TAG_ID, self.item_limit)
         for task in tasks:
             stories = list(self.get_task_history_by_task_id(task['id']))
             task_info_output = {'task_id': task['id'], 'task_title': task['name']}
@@ -92,7 +92,7 @@ class AsanaMiwHandler(BaseMitAndMiW):
         :return:
         """
         top_latent_miw = list()
-        tasks = self.get_tasks_by_tag_id(settings.ASANA_TAG_ID, self.item_limit)
+        tasks = self.get_tasks_by_tag_id(settings.ASANA_MIW_TAG_ID, self.item_limit)
         for task in tasks:
             stories = list(self.get_task_history_by_task_id(task['id']))
             task_info_output = {'task_id': task['id'], 'task_title': task['name']}
