@@ -11,17 +11,25 @@ client = asana.Client.access_token(settings.ASANA_PERSONAL_ACCESS_TOKEN)
 
 
 class BaseMitAndMiW:
-    def __init__(self, item_limit):
+    def __init__(self, item_limit, tag_id):
         self.item_limit = item_limit
+        self.tag_name = self.get_tag_name_by_id(tag_id)
+        self.tag_id = tag_id
+
+    def get_tag_name_by_id(self, tag_id):
+        tags = client.tags.find_all({'workspace': "1968482998660"})
+        for tag in tags:
+            if tag['id'] == int(tag_id):
+                return tag['name']
 
     def get_tasks_by_tag_id(self, tag_id, item_limit):
         """
         Performs tasks query with searched by ASANA_TAG_ID
         Mathias Ssenabulya
         Workspace_ID = 1968482998660
-        {'id': 14410378551182, 'name': 'Most Important This Week'}
-        {'id': 14423571806636, 'name': 'Most Important Today'}
-        {'id': 28211362476024, 'name': 'Next Important This Week'}
+        [{'id': 14410378551182, 'name': 'Most Important This Week'},
+        {'id': 14423571806636, 'name': 'Most Important Today'},
+        {'id': 28211362476024, 'name': 'Next Important This Week'}]
         """
         # print(client.tags.find_all({'workspace': "1968482998660"}))
         tasks = client.tasks.find_all({'tag': tag_id, 'completed_since': 'now'}, item_limit=item_limit)
@@ -32,93 +40,51 @@ class BaseMitAndMiW:
         return task_history
 
 
-class AsanaMitHandler(BaseMitAndMiW):
-    def get_date_task_added_to_mit_from_task_story(self, task_stories_list_dicts):
+class AsanaTopTalentHandler(BaseMitAndMiW):
+    def get_date_task_added_to_tag_from_task_story(self, task_stories_list_dicts):
         output = {}
-        added_to_mit = None
+        added_to_tag = None
         for history_record in task_stories_list_dicts:
-            if history_record['text'] == 'added to Most Important Today':
-                if not added_to_mit:
-                    added_to_mit = history_record['created_at']
+            if self.tag_name in history_record['text']:
+                if not added_to_tag:
+                    added_to_tag = history_record['created_at']
                 else:
-                    if added_to_mit < history_record['created_at']:
-                        added_to_mit = history_record['created_at']
-                output = {'added_to_mit': added_to_mit}
+                    if added_to_tag < history_record['created_at']:
+                        added_to_tag = history_record['created_at']
+                output = {'added_date': added_to_tag}
         return output
 
-    def get_top_latent_mit(self):
+    def get_top_latent(self):
         """
         Scalar Metrics
-        Top n Latent MIT: Incomplete MIT tasks with oldest date/time added to MIT
-        Find all tasks with tag “Most Important Today”
+        Top n Latent in TAG_NAME: Incomplete tasks with oldest date/time added to TAG_NAME
+        Find all tasks with tag TAG_NAME
         :return:
         """
-        top_latent_mit = list()
-        tasks = self.get_tasks_by_tag_id(settings.ASANA_MIT_TAG_ID, self.item_limit)
+        top_latent = list()
+        tasks = self.get_tasks_by_tag_id(self.tag_id, self.item_limit)
         for task in tasks:
             stories = list(self.get_task_history_by_task_id(task['id']))
             task_info_output = {'task_id': task['id'], 'task_title': task['name']}
-            date_added_to_mit = self.get_date_task_added_to_mit_from_task_story(stories)
-            task_info_output.update(date_added_to_mit)
-            top_latent_mit.append(task_info_output)
+            date_added = self.get_date_task_added_to_tag_from_task_story(stories)
+            task_info_output.update(date_added)
+            top_latent.append(task_info_output)
 
-            # print(task)
-            # print(stories)
-            # print("")
+            print(task)
+            print(stories)
+            print("")
 
-        rows_by_added_to_mit = sorted(top_latent_mit, key=itemgetter('added_to_mit'))
-        return rows_by_added_to_mit
-
-
-class AsanaMiwHandler(BaseMitAndMiW):
-    def get_date_task_added_to_miw_from_task_story(self, task_stories_list_dicts):
-        output = {}
-        added_to_miw = None
-        for history_record in task_stories_list_dicts:
-            if history_record['text'] == 'added to Most Important This Week':
-                if not added_to_miw:
-                    added_to_miw = history_record['created_at']
-                else:
-                    if added_to_miw < history_record['created_at']:
-                        added_to_miw = history_record['created_at']
-                output = {'added_to_miw': added_to_miw}
-        return output
-
-    def get_top_latent_miw(self):
-        """
-        Scalar Metrics
-        Top n Latent MIW: Incomplete MIW tasks with oldest date/time added to MIW
-        Find all tasks with tag “Most Important This Week”
-        :return:
-        """
-        top_latent_miw = list()
-        tasks = self.get_tasks_by_tag_id(settings.ASANA_MIW_TAG_ID, self.item_limit)
-        for task in tasks:
-            stories = list(self.get_task_history_by_task_id(task['id']))
-            task_info_output = {'task_id': task['id'], 'task_title': task['name']}
-            date_added_to_miw = self.get_date_task_added_to_miw_from_task_story(stories)
-            task_info_output.update(date_added_to_miw)
-            top_latent_miw.append(task_info_output)
-
-            # print(task)
-            # print(stories)
-            # print("")
-
-        rows_by_added_to_miw = sorted(top_latent_miw, key=itemgetter('added_to_miw'))
-        return rows_by_added_to_miw
+        rows_by_added_to = sorted(top_latent, key=itemgetter('added_date'))
+        return rows_by_added_to
 
 
-# /api/scalar_metrics/mit/
-def top_latent_mit_tasks(request):
+# /api/scalar_metrics/top_latent/(?P<tag_id>[0-9])
+def get_top_latent_tasks(request, **kwargs):
     item_limit = None
-    mit_handler = AsanaMitHandler(item_limit)
-    output = mit_handler.get_top_latent_mit()
-    return JsonResponse(output, safe=False)
-
-
-# /api/scalar_metrics/miw/
-def top_latent_miw_tasks(request):
-    item_limit = None
-    miw_handler = AsanaMiwHandler(item_limit)
-    output = miw_handler.get_top_latent_miw()
-    return JsonResponse(output, safe=False)
+    tag_id = kwargs.get("tag_id")
+    try:
+        top_latent_handler = AsanaTopTalentHandler(item_limit, tag_id)
+        output = top_latent_handler.get_top_latent()
+        return JsonResponse(output, safe=False)
+    except Exception as e:
+        return JsonResponse({"error": str(e)})
