@@ -1,23 +1,18 @@
 from operator import itemgetter
-
-from django.shortcuts import render
 from django.http import JsonResponse
-
 import asana_task_analytics_project.settings as settings
-
 import asana
-
-client = asana.Client.access_token(settings.ASANA_PERSONAL_ACCESS_TOKEN)
 
 
 class BaseMitAndMiW:
     def __init__(self, item_limit, tag_id):
+        self.client = asana.Client.access_token(settings.ASANA_PERSONAL_ACCESS_TOKEN)
         self.item_limit = item_limit
         self.tag_name = self.get_tag_name_by_id(tag_id)
         self.tag_id = tag_id
 
     def get_tag_name_by_id(self, tag_id):
-        tags = client.tags.find_all({'workspace': "1968482998660"})
+        tags = self.client.tags.find_all({'workspace': "1968482998660"})
         for tag in tags:
             if tag['id'] == int(tag_id):
                 return tag['name']
@@ -32,15 +27,19 @@ class BaseMitAndMiW:
         {'id': 28211362476024, 'name': 'Next Important This Week'}]
         """
         # print(client.tags.find_all({'workspace': "1968482998660"}))
-        tasks = client.tasks.find_all({'tag': tag_id, 'completed_since': 'now'}, item_limit=item_limit)
+        tasks = self.client.tasks.find_all(
+            {
+                'tag': tag_id,
+                'completed_since': 'now'
+            },
+            item_limit=item_limit
+        )
         return tasks
 
     def get_task_history_by_task_id(self, task_id):
-        task_history = client.tasks.stories(task_id)
+        task_history = self.client.tasks.stories(task_id)
         return task_history
 
-
-class AsanaTopTalentHandler(BaseMitAndMiW):
     def get_date_task_added_to_tag_from_task_story(self, task_stories_list_dicts):
         """
         Iterates over task history records and returns most recent date added to particular tag
@@ -58,6 +57,9 @@ class AsanaTopTalentHandler(BaseMitAndMiW):
                         added_to_tag = history_record['created_at']
                 output = {'added_date': added_to_tag}
         return output
+
+
+class AsanaTopTalentHandler(BaseMitAndMiW):
 
     def get_top_latent(self):
         """
