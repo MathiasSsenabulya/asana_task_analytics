@@ -42,6 +42,11 @@ class BaseMitAndMiW:
 
 class AsanaTopTalentHandler(BaseMitAndMiW):
     def get_date_task_added_to_tag_from_task_story(self, task_stories_list_dicts):
+        """
+        Iterates over task history records and returns most recent date added to particular tag
+        :param task_stories_list_dicts:
+        :return:
+        """
         output = {}
         added_to_tag = None
         for history_record in task_stories_list_dicts:
@@ -78,7 +83,7 @@ class AsanaTopTalentHandler(BaseMitAndMiW):
         return rows_by_added_to
 
 
-# /api/scalar_metrics/top_latent/(?P<tag_id>[0-9])
+# /api/scalar_metrics/top_latent/some_tag_id)
 def get_top_latent_tasks(request, **kwargs):
     item_limit = None
     tag_id = kwargs.get("tag_id")
