@@ -2,23 +2,14 @@ import os
 import json
 from datetime import datetime
 
-import django
-from asana_task_analytics_app.views import BaseMitAndMiW
-
 import asana
 import gspread
 from oauth2client.service_account import ServiceAccountCredentials
 
+from asana_task_analytics_project.secrets.secrets import *
+import django
 os.environ.setdefault("DJANGO_SETTINGS_MODULE", "asana_task_analytics_project.settings")
 django.setup()
-
-ASANA_PERSONAL_ACCESS_TOKEN = '0/dbfdf6c4d44bb0483f0228a19a343d1c'
-MATVEY_ASANA_PERSONAL_ACCESS_TOKEN = '0/2f1c4405f184cdf494250337fc8e1aad'  # Matvey
-ASANA_MIT_TAG_ID = "14423571806636"
-MATVEY_ASANA_MIT_TAG_ID = "285984735768124"
-ASANA_MIW_TAG_ID = "14410378551182"
-MATVEY_ASANA_WORKSPACE_ID = "285985662216999"
-ASANA_WORKSPACE_ID = "1968482998660"
 
 
 class GoogleSpreadsheetHandler:
@@ -122,15 +113,37 @@ class AsanaSeriesMetrics:
         # for tag in tags:
         #     print(tag)
 
-    def get_task_date_added_to_tag_from_task_story(self, task_stories_list_dicts):
+    def get_tasks_by_tag_id(self, tag_id):
+        """
+        Performs tasks query with searched by ASANA_TAG_ID
+        Mathias Ssenabulya
+        Workspace_ID = 1968482998660
+        [{'id': 14410378551182, 'name': 'Most Important This Week'},
+        {'id': 14423571806636, 'name': 'Most Important Today'},
+        {'id': 28211362476024, 'name': 'Next Important This Week'}]
+        """
+        # print(client.tags.find_all({'workspace': "1968482998660"}))
+        tasks = self.client.tasks.find_all(
+            {
+                'tag': tag_id,
+                'completed_since': self.current_date
+            }
+        )
+        return tasks
+
+    def get_task_history_by_task_id(self, task_id):
+        task_history = self.client.tasks.stories(task_id)
+        return task_history
+
+    def get_task_date_added_to_tag_from_task_story(self, task_story):
         """
         Iterates over task history records and returns most recent date added to particular tag
-        :param task_stories_list_dicts:
+        :param task_story:
         :return:
         """
         output = {}
         added_to_tag = None
-        for history_record in task_stories_list_dicts:
+        for history_record in task_story:
             if 'Most Important Today' in history_record['text']:
                 if not added_to_tag:
                     added_to_tag = history_record['created_at']
@@ -144,10 +157,11 @@ class AsanaSeriesMetrics:
     def mit_tasks_added_by_day(self):
         added_today_counter = 0
         # Return tasks either completed on\since current_date\today or all uncompleted tasks at all.
-        tasks = self.client.tasks.find_all({'tag': MATVEY_ASANA_MIT_TAG_ID, 'completed_since': self.current_date})
+        tasks = self.get_tasks_by_tag_id(MATVEY_ASANA_MIT_TAG_ID)
+
         # Then we have to iterate over tasks and fetch task history.
         for task in tasks:
-            task_history = list(self.client.tasks.stories(task['id']))
+            task_history = self.get_task_history_by_task_id(task['id'])
             # Next we need analyse and find out at what date the task was added to MIT tag.
             task_added_date = self.get_task_date_added_to_tag_from_task_story(task_history)
             task_added_date = datetime.strptime(task_added_date['added_date'][:-5], '%Y-%m-%dT%H:%M:%S').strftime('%Y-%m-%d')
@@ -155,7 +169,6 @@ class AsanaSeriesMetrics:
                 added_today_counter += 1
         print(added_today_counter)
         return added_today_counter
-
 
     def mit_tasks_completed_by_day(self):
         task = self.client.tasks.find_by_id('285984735768128')
