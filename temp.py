@@ -103,8 +103,10 @@ class AsanaSeriesMetrics:
     """
     def __init__(self):
         self.client = asana.Client.access_token(MATVEY_ASANA_PERSONAL_ACCESS_TOKEN)
+        # self.client = asana.Client.access_token(ASANA_PERSONAL_ACCESS_TOKEN)
         self.output_new_data_list = []
         self.current_date = datetime.now().strftime('%Y-%m-%d')
+        # self.current_date = '2017-02-27'
 
         # me = self.client.users.me()
         # print(me['workspaces'])
@@ -158,6 +160,7 @@ class AsanaSeriesMetrics:
         added_today_counter = 0
         # Return tasks either completed on\since current_date\today or all uncompleted tasks at all.
         tasks = self.get_tasks_by_tag_id(MATVEY_ASANA_MIT_TAG_ID)
+        # tasks = self.get_tasks_by_tag_id(ASANA_MIT_TAG_ID)
 
         # Then we have to iterate over tasks and fetch task history.
         for task in tasks:
