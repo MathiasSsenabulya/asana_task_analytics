@@ -87,24 +87,11 @@ class GoogleSpreadsheetHandler:
 class AsanaSeriesMetrics:
     """
     Extracts data from Asana API, calculates and returns outputs.
-
-        Cell names for list_dicts_outputs:
-        A - Date - shouldn't updated here!!!
-        B - Year-Week - shouldn't updated here!!!
-        C - MIT Added
-        D - MIT Completed
-        E - MIT Average Age
-        F - MIW Added
-        G - MIW Completed
-        H - MIW Average Age
-        I - NIW Added
-        J - NIW Completed
-        K - NIW Average Age
     """
     def __init__(self):
         self.client = asana.Client.access_token(MATVEY_ASANA_PERSONAL_ACCESS_TOKEN)
         # self.client = asana.Client.access_token(ASANA_PERSONAL_ACCESS_TOKEN)
-        self.output_new_data_list = []
+        self.output_data = []
         self.current_date = datetime.now().strftime('%Y-%m-%d')
         # self.current_date = '2017-02-27'
 
@@ -124,7 +111,9 @@ class AsanaSeriesMetrics:
         {'id': 14423571806636, 'name': 'Most Important Today'},
         {'id': 28211362476024, 'name': 'Next Important This Week'}]
         """
-        # print(client.tags.find_all({'workspace': "1968482998660"}))
+        # As stated here https://asana.com/developers/api-reference/tasks#query, 'completed_since' parameter only return
+        # tasks that are either incomplete or that have been completed since this time. So it will always return today's
+        # completed tasks with all uncompleted tasks.
         tasks = self.client.tasks.find_all(
             {
                 'tag': tag_id,
@@ -137,16 +126,17 @@ class AsanaSeriesMetrics:
         task_history = self.client.tasks.stories(task_id)
         return task_history
 
-    def get_task_date_added_to_tag_from_task_story(self, task_story):
+    def get_task_date_added_to_tag_from_task_story(self, task_story, tag_name):
         """
         Iterates over task history records and returns most recent date added to particular tag
+        :param tag_name:
         :param task_story:
         :return:
         """
         output = {}
         added_to_tag = None
         for history_record in task_story:
-            if 'Most Important Today' in history_record['text']:
+            if tag_name in history_record['text']:
                 if not added_to_tag:
                     added_to_tag = history_record['created_at']
                 else:
@@ -156,34 +146,26 @@ class AsanaSeriesMetrics:
         return output
 
     # Asana API
-    def mit_tasks_added_by_day(self):
+    def mit_miw_tasks_added_by_day(self, tasks, tag_name):
         added_today_counter = 0
-        # Return tasks either completed on\since current_date\today or all uncompleted tasks at all.
-        tasks = self.get_tasks_by_tag_id(MATVEY_ASANA_MIT_TAG_ID)
-        # tasks = self.get_tasks_by_tag_id(ASANA_MIT_TAG_ID)
-
         # Then we have to iterate over tasks and fetch task history.
         for task in tasks:
             task_history = self.get_task_history_by_task_id(task['id'])
             # Next we need analyse and find out at what date the task was added to MIT tag.
-            task_added_date = self.get_task_date_added_to_tag_from_task_story(task_history)
+            task_added_date = self.get_task_date_added_to_tag_from_task_story(task_history, tag_name)
             task_added_date = datetime.strptime(task_added_date['added_date'][:-5], '%Y-%m-%dT%H:%M:%S').strftime('%Y-%m-%d')
             if task_added_date == self.current_date:
                 added_today_counter += 1
-        print(added_today_counter)
         return added_today_counter
 
-    def mit_tasks_completed_by_day(self):
-        task = self.client.tasks.find_by_id('285984735768128')
-        print(json.dumps(task))
-
-        pass
-
-    def miw_tasks_added_by_day(self):
-        pass
-
-    def miw_tasks_completed_by_day(self):
-        pass
+    def mit_miw_tasks_completed_by_day(self, tasks):
+        completed_today_counter = 0
+        # Then we have to iterate over tasks and fetch task detailed data.
+        for task in tasks:
+            task_data = self.client.tasks.find_by_id(task['id'])
+            if task_data['completed']:
+                completed_today_counter += 1
+        return completed_today_counter
 
     def mit_average_age_by_day(self):
         pass
@@ -191,17 +173,57 @@ class AsanaSeriesMetrics:
     def miw_average_age_by_day(self):
         pass
 
-    def get_data_from_asana_api_to_spreadsheet(self):
+    def prepare_asana_api_data_to_spreadsheet(self):
         """
+        ** Cell names for list_dicts_outputs: **
+        A - Date - shouldn't updated here!!!
+        B - Year-Week - shouldn't updated here!!!
+        C - MIT Added
+        D - MIT Completed
+        E - MIT Average Age
+        F - MIW Added
+        G - MIW Completed
+        H - MIW Average Age
+        I - NIW Added - not described in tech.requirements
+        J - NIW Completed - not described in tech.requirements
+        K - NIW Average Age - not described in tech.requirements
+
         :return: self.output_new_data_list: [
         {'cell_label': 'C', 'value': 123},
         {'cell_label': 'D', 'value': 5},
         {'cell_label': 'E', 'value': 222}
         ]
         """
-        # mit_tasks_added_by_day
-        self.mit_tasks_added_by_day()
+        # MIT tasks
+        # Return tasks either completed on\since current_date\today or all uncompleted tasks at all.
+        mit_tasks = list(self.get_tasks_by_tag_id(MATVEY_ASANA_MIT_TAG_ID))
 
+        # mit_tasks_added_by_day: C-column
+        mit_tasks_added_by_day = self.mit_miw_tasks_added_by_day(mit_tasks, 'Most Important Today')
+        self.output_data.append({'cell_label': 'C', 'value': mit_tasks_added_by_day})
+
+        # mit_tasks_completed_by_day: D-column
+        mit_tasks_completed_by_day = self.mit_miw_tasks_completed_by_day(mit_tasks)
+        self.output_data.append({'cell_label': 'D', 'value': mit_tasks_completed_by_day})
+
+        # mit_average_age_by_day: E-column
+
+
+        # MIW Tasks
+        miw_tasks = list(self.get_tasks_by_tag_id(MATVEY_ASANA_MIW_TAG_ID))
+
+        # miw_tasks_added_by_day: F-column
+        miw_tasks_added_by_day = self.mit_miw_tasks_added_by_day(miw_tasks, 'Most Important This Week')
+        self.output_data.append({'cell_label': 'F', 'value': miw_tasks_added_by_day})
+
+        # miw_tasks_completed_by_day: G-column
+        miw_tasks_completed_by_day = self.mit_miw_tasks_completed_by_day(miw_tasks)
+        self.output_data.append({'cell_label': 'G', 'value': miw_tasks_completed_by_day})
+
+        # miw_average_age_by_day: H-column
+
+        print(self.output_data)
+        return self.output_data
 
 new_data_list = [
         {'cell_label': 'C', 'value': 123},
@@ -209,11 +231,13 @@ new_data_list = [
         {'cell_label': 'E', 'value': 222}
         ]
 
-# Processing Google Spreadsheet
-# spreadhseet_handler = GoogleSpreadsheetHandler()
-# spreadhseet_handler.create_new_row_for_today()
-# spreadhseet_handler.update_row_for_today(new_data_list)
 
 # Processing Asana API
 asana_series_metrics_handler = AsanaSeriesMetrics()
-asana_series_metrics_handler.get_data_from_asana_api_to_spreadsheet()
+data_to_update_spreadsheet = asana_series_metrics_handler.prepare_asana_api_data_to_spreadsheet()
+
+# Processing Google Spreadsheet
+spreadhseet_handler = GoogleSpreadsheetHandler()
+spreadhseet_handler.create_new_row_for_today()
+spreadhseet_handler.update_row_for_today(data_to_update_spreadsheet)
+
