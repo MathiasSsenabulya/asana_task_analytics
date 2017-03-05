@@ -8,6 +8,7 @@ from oauth2client.service_account import ServiceAccountCredentials
 
 from asana_task_analytics_project.secrets.secrets import *
 import django
+from django.core.management.base import BaseCommand
 
 os.environ.setdefault("DJANGO_SETTINGS_MODULE", "asana_task_analytics_project.settings")
 django.setup()
@@ -243,6 +244,7 @@ class AsanaSeriesMetrics:
 
         # mit_average_age_by_day: E-column
         mit_incomplete_tasks = self.mit_miw_tasks_incompleted_by_day(mit_tasks)
+        print("Incomplete MIT tasks #: %d" % len(mit_incomplete_tasks))
         mit_average_age = self.mit_miw_average_age_by_day(mit_incomplete_tasks, 'Most Important Today')
         self.output_data.append({'cell_label': 'E', 'value': mit_average_age})
 
@@ -259,6 +261,7 @@ class AsanaSeriesMetrics:
 
         # miw_average_age_by_day: H-column
         miw_incomplete_tasks = self.mit_miw_tasks_incompleted_by_day(miw_tasks)
+        print("Incomplete MIW tasks #: %d" % len(miw_incomplete_tasks))
         miw_average_age = self.mit_miw_average_age_by_day(miw_incomplete_tasks, 'Most Important This Week')
         self.output_data.append({'cell_label': 'H', 'value': miw_average_age})
 
@@ -276,6 +279,17 @@ def main():
     spreadsheet_handler.create_new_row_for_today()
     spreadsheet_handler.update_row_for_today(data_to_update_spreadsheet)
     print("Process finished")
+
+
+class Command(BaseCommand):
+    help = 'To start the program run "python manage.py series_metrics" command'
+
+    def add_arguments(self, series_metrics):
+        series_metrics.description = "Connects to Asana API, collects and analyse tasks data, " \
+                                     "saves results into google spreadsheet."
+
+    def handle(self, *args, **options):
+        main()
 
 
 if __name__ == '__main__':
