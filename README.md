@@ -21,10 +21,10 @@ This command should be run frequently by cron.
 
 
 ###secrets.py template:
-ASANA_PERSONAL_ACCESS_TOKEN = 'some asana personal access token'
-ASANA_MIT_TAG_ID = "14423571806636"
-ASANA_MIW_TAG_ID = "14410378551182"
-ASANA_WORKSPACE_ID = "1968482998660"
+* ASANA_PERSONAL_ACCESS_TOKEN = 'some asana personal access token'
+* ASANA_MIT_TAG_ID = "14423571806636"
+* ASANA_MIW_TAG_ID = "14410378551182"
+* ASANA_WORKSPACE_ID = "1968482998660"
 
 ###Analytics Code-d9b5f2ff02e5.json
 Obtained from google drive api service
