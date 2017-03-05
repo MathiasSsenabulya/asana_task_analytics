@@ -56,4 +56,4 @@ cookies.json
 /media
 asana_task_analytics_app/__pycache__/
 asana_task_analytics_project/__pycache__/
-/asana_task_analytics_project/secrets/
+/asana_task_analytics_project/secrets/*

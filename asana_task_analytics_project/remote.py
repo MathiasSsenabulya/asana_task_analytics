@@ -1,4 +1,4 @@
-from asana_task_analytics_project.secrets import *
+from asana_task_analytics_project.secrets.secrets import *
 
 # Heroku Deploy
 import dj_database_url
