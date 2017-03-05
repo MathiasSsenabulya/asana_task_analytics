@@ -3,7 +3,7 @@
 ## Installation & Use Notes
 * Install fresh python environment and activate it
 * Install all program packages with: pip install -r requirements.txt
-* Add into **"asana_task_analytics_project/secrets"** directory following files:
+* Add into **"asana_task_analytics_project/secrets/"** directory following files:
     * secrets.py
     * Analytics Code-d9b5f2ff02e5.json
 * Fill in secrets.py file with necessary credentials described in "secrets.py template" below.
