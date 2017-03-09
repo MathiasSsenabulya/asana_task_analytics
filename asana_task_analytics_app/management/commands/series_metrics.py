@@ -85,7 +85,7 @@ class GoogleSpreadsheetHandler:
         :return:
         """
         for data in new_data_list:
-            print(data)
+            # print(data)
             cell_to_update = "{}{}".format(data["cell_label"], self.last_row_number)
             self.worksheet.update_acell(cell_to_update, data['value'])
 

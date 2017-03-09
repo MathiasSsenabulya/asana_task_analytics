@@ -77,9 +77,9 @@ class AsanaTopTalentHandler(BaseMitAndMiW):
             task_info_output.update(date_added)
             top_latent.append(task_info_output)
 
-            print(task)
-            print(stories)
-            print("")
+            # print(task)
+            # print(stories)
+            # print("")
 
         rows_by_added_to = sorted(top_latent, key=itemgetter('added_date'))
         return rows_by_added_to
