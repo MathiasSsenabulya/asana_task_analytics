@@ -45,13 +45,9 @@ crashlytics.properties
 crashlytics-build.properties
 fabric.properties
 
-# Matvey
-output.csv
-cookies.json
-
 # Django stuff:
 *.log
-*/migrations
+migrations
 /static
 /media
 asana_task_analytics_app/__pycache__/
