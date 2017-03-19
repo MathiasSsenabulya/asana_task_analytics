@@ -58,7 +58,7 @@ class GoogleSpreadsheetHandler:
             # Then create a new row
             self.worksheet.append_row([
                 date_today,
-                "{}-{}".format(datetime.today().strftime("%Y"), self.get_num_of_week_for_today())
+                "'{}-{}".format(datetime.today().strftime("%Y"), self.get_num_of_week_for_today())
             ])
             self.last_row_number += 1
 
