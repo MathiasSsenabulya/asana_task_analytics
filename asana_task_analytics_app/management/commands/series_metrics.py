@@ -16,9 +16,13 @@ django.setup()
 SECRETS_DIR = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(__file__)))),
                            'asana_task_analytics_project', 'secrets')
 
+# self.days_offset - how many days to subtract from current date.
+# This is for recording data to spreadsheet each midnight for the previous day.
+DAYS_OFFSET = timedelta(days=1)
+
 
 class GoogleSpreadsheetHandler:
-    def __init__(self):
+    def __init__(self, days_offset):
         scope = [
             'https://spreadsheets.google.com/feeds',
             # 'https://www.googleapis.com/auth/drive'
@@ -29,10 +33,11 @@ class GoogleSpreadsheetHandler:
         sh = gc.open('Asana Metrics')
         self.worksheet = sh.sheet1
         self.last_row_number = self.worksheet.row_count
+        self.days_offset = days_offset
 
     # Helpers
     def get_num_of_week_for_today(self):
-        today = datetime.today()
+        today = datetime.utcnow() - self.days_offset
         return today.strftime("%U")
 
     def create_new_row_for_today(self):
@@ -51,7 +56,8 @@ class GoogleSpreadsheetHandler:
         K - NIW Average Age
         :return:
         """
-        date_today = datetime.utcnow().strftime("%m/%d/%Y")
+        date_today = datetime.utcnow() - self.days_offset
+        date_today = date_today.strftime("%m/%d/%Y")
 
         # If we don't have a row for today's date
         if self.worksheet.acell("A%d" % self.last_row_number).value != date_today:  # A3...n-cell
@@ -95,15 +101,16 @@ class AsanaSeriesMetrics:
     Extracts data from Asana API, calculates and returns outputs.
     """
 
-    def __init__(self, asana_personal_token, asana_mit_tag_id, asana_miw_tag_id):
+    def __init__(self, asana_personal_token, asana_mit_tag_id, asana_miw_tag_id, days_offset):
+        self.days_offset = days_offset
         self.mit_tag_id = asana_mit_tag_id
         self.miw_tag_id = asana_miw_tag_id
         self.client = asana.Client.access_token(asana_personal_token)
         self.output_data = []
-        self.initial_datetime_now = datetime.utcnow()
-        self.current_date = self.initial_datetime_now.strftime('%Y-%m-%d')
-        # self.current_date = '2017-02-27'
-
+        self.initial_datetime = datetime.utcnow() - self.days_offset
+        self.current_date = self.initial_datetime.strftime('%Y-%m-%d')
+        # self.current_date = '2017-03-19'
+        # print(self.current_date)
         # me = self.client.users.me()
         # print(me['workspaces'])
         #
@@ -127,8 +134,11 @@ class AsanaSeriesMetrics:
             {
                 'tag': tag_id,
                 'completed_since': self.current_date
+                # 'completed_since': 'now'
             }
         )
+        print(list(tasks))
+        input()
         return tasks
 
     def get_task_history_by_task_id(self, task_id):
@@ -200,7 +210,7 @@ class AsanaSeriesMetrics:
         for task in tasks:
             task_history = self.get_task_history_by_task_id(task['id'])
             most_recent_date_added_to_tag = self.get_task_date_added_to_tag_from_task_story(task_history, tag_name)
-            task_age = self.initial_datetime_now - datetime.strptime(
+            task_age = self.initial_datetime - datetime.strptime(
                 most_recent_date_added_to_tag.get('added_date')[:-5], "%Y-%m-%dT%H:%M:%S")
             total_time.append(task_age)
         for time in total_time:
@@ -271,11 +281,13 @@ class AsanaSeriesMetrics:
 def main():
     print("Process started...")
     # Processing Asana API
-    asana_series_metrics_handler = AsanaSeriesMetrics(ASANA_PERSONAL_ACCESS_TOKEN, ASANA_MIT_TAG_ID, ASANA_MIW_TAG_ID)
+    asana_series_metrics_handler = AsanaSeriesMetrics(
+        ASANA_PERSONAL_ACCESS_TOKEN, ASANA_MIT_TAG_ID, ASANA_MIW_TAG_ID, DAYS_OFFSET)
+        # MATVEY_ASANA_PERSONAL_ACCESS_TOKEN, MATVEY_ASANA_MIT_TAG_ID, MATVEY_ASANA_MIW_TAG_ID, DAYS_OFFSET)
     data_to_update_spreadsheet = asana_series_metrics_handler.prepare_asana_api_data_to_spreadsheet()
 
     # Processing Google Spreadsheet
-    spreadsheet_handler = GoogleSpreadsheetHandler()
+    spreadsheet_handler = GoogleSpreadsheetHandler(DAYS_OFFSET)
     spreadsheet_handler.create_new_row_for_today()
     spreadsheet_handler.update_row_for_today(data_to_update_spreadsheet)
     print("Process finished")
