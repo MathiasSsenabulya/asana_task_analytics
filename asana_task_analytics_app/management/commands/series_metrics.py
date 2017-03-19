@@ -137,8 +137,6 @@ class AsanaSeriesMetrics:
                 # 'completed_since': 'now'
             }
         )
-        print(list(tasks))
-        input()
         return tasks
 
     def get_task_history_by_task_id(self, task_id):
