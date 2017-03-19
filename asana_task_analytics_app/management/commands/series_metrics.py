@@ -51,14 +51,14 @@ class GoogleSpreadsheetHandler:
         K - NIW Average Age
         :return:
         """
-        date_today = datetime.today().strftime("%m/%d/%Y")
+        date_today = datetime.utcnow().strftime("%m/%d/%Y")
 
         # If we don't have a row for today's date
         if self.worksheet.acell("A%d" % self.last_row_number).value != date_today:  # A3...n-cell
             # Then create a new row
             self.worksheet.append_row([
                 date_today,
-                "'{}-{}".format(datetime.today().strftime("%Y"), self.get_num_of_week_for_today())
+                "'{}-{}".format(datetime.utcnow().strftime("%Y"), self.get_num_of_week_for_today())
             ])
             self.last_row_number += 1
 
@@ -100,7 +100,7 @@ class AsanaSeriesMetrics:
         self.miw_tag_id = asana_miw_tag_id
         self.client = asana.Client.access_token(asana_personal_token)
         self.output_data = []
-        self.initial_datetime_now = datetime.now()
+        self.initial_datetime_now = datetime.utcnow()
         self.current_date = self.initial_datetime_now.strftime('%Y-%m-%d')
         # self.current_date = '2017-02-27'
 
