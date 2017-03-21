@@ -18,7 +18,7 @@ SECRETS_DIR = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.pa
 
 # self.days_offset - how many days to subtract from current date.
 # This is for recording data to spreadsheet each midnight for the previous day.
-DAYS_OFFSET = timedelta(days=2)
+DAYS_OFFSET = timedelta(days=1)
 
 
 class GoogleSpreadsheetHandler:
