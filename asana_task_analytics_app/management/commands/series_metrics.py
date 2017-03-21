@@ -18,7 +18,7 @@ SECRETS_DIR = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.pa
 
 # self.days_offset - how many days to subtract from current date.
 # This is for recording data to spreadsheet each midnight for the previous day.
-DAYS_OFFSET = timedelta(days=1)
+DAYS_OFFSET = timedelta(days=2)
 
 
 class GoogleSpreadsheetHandler:
@@ -109,7 +109,7 @@ class AsanaSeriesMetrics:
         self.output_data = []
         self.initial_datetime = datetime.utcnow() - self.days_offset
         self.current_date = self.initial_datetime.strftime('%Y-%m-%d')
-        # self.current_date = '2017-03-19'
+        # self.current_date = '2017-03-20'
         # print(self.current_date)
         # me = self.client.users.me()
         # print(me['workspaces'])
