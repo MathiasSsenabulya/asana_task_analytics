@@ -5,11 +5,12 @@ import asana
 
 
 class BaseMitAndMiW:
-    def __init__(self, item_limit, tag_id):
+    def __init__(self, item_limit, tag_id, items_to_show):
         self.client = asana.Client.access_token(settings.ASANA_PERSONAL_ACCESS_TOKEN)
         self.item_limit = item_limit
         self.tag_name = self.get_tag_name_by_id(tag_id)
         self.tag_id = tag_id
+        self.items_to_show = items_to_show
 
     def get_tag_name_by_id(self, tag_id):
         tags = self.client.tags.find_all({'workspace': "1968482998660"})
@@ -32,8 +33,10 @@ class BaseMitAndMiW:
                 'tag': tag_id,
                 'completed_since': 'now'
             },
-            item_limit=item_limit
+            item_limit=item_limit,
+            iterator_type=None
         )
+        tasks.reverse()
         return tasks
 
     def get_task_history_by_task_id(self, task_id):
@@ -71,15 +74,21 @@ class AsanaTopTalentHandler(BaseMitAndMiW):
         top_latent = list()
         tasks = self.get_tasks_by_tag_id(self.tag_id, self.item_limit)
         for task in tasks:
+            if len(top_latent) == self.items_to_show:
+                break
+            # Tasks that end in : are not actually real tasks. Asana implemented these as headings,
+            # so any tasks that ends in : should not show up.
+            if task['name'].endswith(':'):
+                continue
             stories = list(self.get_task_history_by_task_id(task['id']))
             task_info_output = {'task_id': task['id'], 'task_title': task['name']}
             date_added = self.get_date_task_added_to_tag_from_task_story(stories)
             task_info_output.update(date_added)
             top_latent.append(task_info_output)
 
-            print(task)
-            print(stories)
-            print("")
+            # print(task)
+            # print(stories)
+            # print("")
 
         rows_by_added_to = sorted(top_latent, key=itemgetter('added_date'))
         return rows_by_added_to
@@ -88,9 +97,10 @@ class AsanaTopTalentHandler(BaseMitAndMiW):
 # /api/scalar_metrics/top_latent/some_tag_id)
 def get_top_latent_tasks(request, **kwargs):
     item_limit = None
+    items_to_show = 3
     tag_id = kwargs.get("tag_id")
     try:
-        top_latent_handler = AsanaTopTalentHandler(item_limit, tag_id)
+        top_latent_handler = AsanaTopTalentHandler(item_limit, tag_id, items_to_show)
         output = top_latent_handler.get_top_latent()
         return JsonResponse(output, safe=False)
     except Exception as e:

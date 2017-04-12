@@ -16,9 +16,13 @@ django.setup()
 SECRETS_DIR = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(__file__)))),
                            'asana_task_analytics_project', 'secrets')
 
+# self.days_offset - how many days to subtract from current date.
+# This is for recording data to spreadsheet each midnight for the previous day.
+DAYS_OFFSET = timedelta(days=1)
+
 
 class GoogleSpreadsheetHandler:
-    def __init__(self):
+    def __init__(self, days_offset):
         scope = [
             'https://spreadsheets.google.com/feeds',
             # 'https://www.googleapis.com/auth/drive'
@@ -29,10 +33,11 @@ class GoogleSpreadsheetHandler:
         sh = gc.open('Asana Metrics')
         self.worksheet = sh.sheet1
         self.last_row_number = self.worksheet.row_count
+        self.days_offset = days_offset
 
     # Helpers
     def get_num_of_week_for_today(self):
-        today = datetime.today()
+        today = datetime.utcnow() - self.days_offset
         return today.strftime("%U")
 
     def create_new_row_for_today(self):
@@ -43,22 +48,26 @@ class GoogleSpreadsheetHandler:
         C - MIT Added
         D - MIT Completed
         E - MIT Average Age
-        F - MIW Added
-        G - MIW Completed
-        H - MIW Average Age
-        I - NIW Added
-        J - NIW Completed
-        K - NIW Average Age
+        F - MIT Count
+        G - MIW Added
+        H - MIW Completed
+        I - MIW Average Age
+        J - MIW Count
+
+        K - NIW Added
+        L - NIW Completed
+        M - NIW Average Age
         :return:
         """
-        date_today = datetime.today().strftime("%m/%d/%Y")
+        date_today = datetime.utcnow() - self.days_offset
+        date_today = date_today.strftime("%m/%d/%Y")
 
         # If we don't have a row for today's date
         if self.worksheet.acell("A%d" % self.last_row_number).value != date_today:  # A3...n-cell
             # Then create a new row
             self.worksheet.append_row([
                 date_today,
-                "{}-{}".format(datetime.today().strftime("%Y"), self.get_num_of_week_for_today())
+                "'{}-{}".format(datetime.utcnow().strftime("%Y"), self.get_num_of_week_for_today())
             ])
             self.last_row_number += 1
 
@@ -70,12 +79,15 @@ class GoogleSpreadsheetHandler:
         C - MIT Added
         D - MIT Completed
         E - MIT Average Age
-        F - MIW Added
-        G - MIW Completed
-        H - MIW Average Age
-        I - NIW Added
-        J - NIW Completed
-        K - NIW Average Age
+        F - MIT Count
+        G - MIW Added
+        H - MIW Completed
+        I - MIW Average Age
+        J - MIW Count
+
+        K - NIW Added
+        L - NIW Completed
+        M - NIW Average Age
 
         :param new_data_list: [
         {'cell_label': 'C', 'value': 123},
@@ -85,7 +97,7 @@ class GoogleSpreadsheetHandler:
         :return:
         """
         for data in new_data_list:
-            print(data)
+            # print(data)
             cell_to_update = "{}{}".format(data["cell_label"], self.last_row_number)
             self.worksheet.update_acell(cell_to_update, data['value'])
 
@@ -95,15 +107,16 @@ class AsanaSeriesMetrics:
     Extracts data from Asana API, calculates and returns outputs.
     """
 
-    def __init__(self, asana_personal_token, asana_mit_tag_id, asana_miw_tag_id):
+    def __init__(self, asana_personal_token, asana_mit_tag_id, asana_miw_tag_id, days_offset):
+        self.days_offset = days_offset
         self.mit_tag_id = asana_mit_tag_id
         self.miw_tag_id = asana_miw_tag_id
         self.client = asana.Client.access_token(asana_personal_token)
         self.output_data = []
-        self.initial_datetime_now = datetime.now()
-        self.current_date = self.initial_datetime_now.strftime('%Y-%m-%d')
-        # self.current_date = '2017-02-27'
-
+        self.initial_datetime = datetime.utcnow() - self.days_offset
+        self.current_date = self.initial_datetime.strftime('%Y-%m-%d')
+        # self.current_date = '2017-03-20'
+        # print(self.current_date)
         # me = self.client.users.me()
         # print(me['workspaces'])
         #
@@ -127,6 +140,7 @@ class AsanaSeriesMetrics:
             {
                 'tag': tag_id,
                 'completed_since': self.current_date
+                # 'completed_since': 'now'
             }
         )
         return tasks
@@ -200,9 +214,10 @@ class AsanaSeriesMetrics:
         for task in tasks:
             task_history = self.get_task_history_by_task_id(task['id'])
             most_recent_date_added_to_tag = self.get_task_date_added_to_tag_from_task_story(task_history, tag_name)
-            task_age = self.initial_datetime_now - datetime.strptime(
+            # !!! Working with timedelta objects !!!
+            task_age = self.initial_datetime - datetime.strptime(
                 most_recent_date_added_to_tag.get('added_date')[:-5], "%Y-%m-%dT%H:%M:%S")
-            total_time.append(task_age)
+            total_time.append(timedelta(days=0) if task_age < timedelta(days=0) else task_age)
         for time in total_time:
             dates_sum += time
         average_age = dates_sum / len(tasks)
@@ -217,12 +232,15 @@ class AsanaSeriesMetrics:
         C - MIT Added
         D - MIT Completed
         E - MIT Average Age
-        F - MIW Added
-        G - MIW Completed
-        H - MIW Average Age
-        I - NIW Added - not described in tech.requirements
-        J - NIW Completed - not described in tech.requirements
-        K - NIW Average Age - not described in tech.requirements
+        F - MIT Count
+        G - MIW Added
+        H - MIW Completed
+        I - MIW Average Age
+        J - MIW Count
+
+        K - NIW Added
+        L - NIW Completed
+        M - NIW Average Age
 
         :return: self.output_new_data_list: [
         {'cell_label': 'C', 'value': 123},
@@ -248,22 +266,28 @@ class AsanaSeriesMetrics:
         mit_average_age = self.mit_miw_average_age_by_day(mit_incomplete_tasks, 'Most Important Today')
         self.output_data.append({'cell_label': 'E', 'value': mit_average_age})
 
+        # mit_count: F-column
+        self.output_data.append({'cell_label': 'F', 'value': len(mit_tasks)})
+
         # # MIW Tasks
         miw_tasks = list(self.get_tasks_by_tag_id(self.miw_tag_id))
 
-        # miw_tasks_added_by_day: F-column
+        # miw_tasks_added_by_day: G-column
         miw_tasks_added_by_day = self.mit_miw_tasks_added_by_day(miw_tasks, 'Most Important This Week')
-        self.output_data.append({'cell_label': 'F', 'value': miw_tasks_added_by_day})
+        self.output_data.append({'cell_label': 'G', 'value': miw_tasks_added_by_day})
 
-        # miw_tasks_completed_by_day: G-column
+        # miw_tasks_completed_by_day: H-column
         miw_tasks_completed_by_day = self.mit_miw_tasks_completed_by_day(miw_tasks)
-        self.output_data.append({'cell_label': 'G', 'value': miw_tasks_completed_by_day})
+        self.output_data.append({'cell_label': 'H', 'value': miw_tasks_completed_by_day})
 
-        # miw_average_age_by_day: H-column
+        # miw_average_age_by_day: I-column
         miw_incomplete_tasks = self.mit_miw_tasks_incompleted_by_day(miw_tasks)
         print("Incomplete MIW tasks #: %d" % len(miw_incomplete_tasks))
         miw_average_age = self.mit_miw_average_age_by_day(miw_incomplete_tasks, 'Most Important This Week')
-        self.output_data.append({'cell_label': 'H', 'value': miw_average_age})
+        self.output_data.append({'cell_label': 'I', 'value': miw_average_age})
+
+        # miw_count: J-column
+        self.output_data.append({'cell_label': 'J', 'value': len(miw_tasks)})
 
         return self.output_data
 
@@ -271,11 +295,13 @@ class AsanaSeriesMetrics:
 def main():
     print("Process started...")
     # Processing Asana API
-    asana_series_metrics_handler = AsanaSeriesMetrics(ASANA_PERSONAL_ACCESS_TOKEN, ASANA_MIT_TAG_ID, ASANA_MIW_TAG_ID)
+    asana_series_metrics_handler = AsanaSeriesMetrics(
+        ASANA_PERSONAL_ACCESS_TOKEN, ASANA_MIT_TAG_ID, ASANA_MIW_TAG_ID, DAYS_OFFSET)
+        # MATVEY_ASANA_PERSONAL_ACCESS_TOKEN, MATVEY_ASANA_MIT_TAG_ID, MATVEY_ASANA_MIW_TAG_ID, DAYS_OFFSET)
     data_to_update_spreadsheet = asana_series_metrics_handler.prepare_asana_api_data_to_spreadsheet()
 
     # Processing Google Spreadsheet
-    spreadsheet_handler = GoogleSpreadsheetHandler()
+    spreadsheet_handler = GoogleSpreadsheetHandler(DAYS_OFFSET)
     spreadsheet_handler.create_new_row_for_today()
     spreadsheet_handler.update_row_for_today(data_to_update_spreadsheet)
     print("Process finished")

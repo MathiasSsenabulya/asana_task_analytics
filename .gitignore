@@ -2,7 +2,7 @@
 *~
 *.swp
 db.sqlite3
-runserver
+runserver.sh
 
 # Covers JetBrains IDEs: IntelliJ, RubyMine, PhpStorm, AppCode, PyCharm, CLion, Android Studio and Webstorm
 # Reference: https://intellij-support.jetbrains.com/hc/en-us/articles/206544839
@@ -45,13 +45,9 @@ crashlytics.properties
 crashlytics-build.properties
 fabric.properties
 
-# Matvey
-output.csv
-cookies.json
-
 # Django stuff:
 *.log
-*/migrations
+migrations
 /static
 /media
 asana_task_analytics_app/__pycache__/
