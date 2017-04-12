@@ -48,12 +48,15 @@ class GoogleSpreadsheetHandler:
         C - MIT Added
         D - MIT Completed
         E - MIT Average Age
-        F - MIW Added
-        G - MIW Completed
-        H - MIW Average Age
-        I - NIW Added
-        J - NIW Completed
-        K - NIW Average Age
+        F - MIT Count
+        G - MIW Added
+        H - MIW Completed
+        I - MIW Average Age
+        J - MIW Count
+
+        K - NIW Added
+        L - NIW Completed
+        M - NIW Average Age
         :return:
         """
         date_today = datetime.utcnow() - self.days_offset
@@ -76,12 +79,15 @@ class GoogleSpreadsheetHandler:
         C - MIT Added
         D - MIT Completed
         E - MIT Average Age
-        F - MIW Added
-        G - MIW Completed
-        H - MIW Average Age
-        I - NIW Added
-        J - NIW Completed
-        K - NIW Average Age
+        F - MIT Count
+        G - MIW Added
+        H - MIW Completed
+        I - MIW Average Age
+        J - MIW Count
+
+        K - NIW Added
+        L - NIW Completed
+        M - NIW Average Age
 
         :param new_data_list: [
         {'cell_label': 'C', 'value': 123},
@@ -208,9 +214,10 @@ class AsanaSeriesMetrics:
         for task in tasks:
             task_history = self.get_task_history_by_task_id(task['id'])
             most_recent_date_added_to_tag = self.get_task_date_added_to_tag_from_task_story(task_history, tag_name)
+            # !!! Working with timedelta objects !!!
             task_age = self.initial_datetime - datetime.strptime(
                 most_recent_date_added_to_tag.get('added_date')[:-5], "%Y-%m-%dT%H:%M:%S")
-            total_time.append(task_age)
+            total_time.append(timedelta(days=0) if task_age < timedelta(days=0) else task_age)
         for time in total_time:
             dates_sum += time
         average_age = dates_sum / len(tasks)
@@ -225,12 +232,15 @@ class AsanaSeriesMetrics:
         C - MIT Added
         D - MIT Completed
         E - MIT Average Age
-        F - MIW Added
-        G - MIW Completed
-        H - MIW Average Age
-        I - NIW Added - not described in tech.requirements
-        J - NIW Completed - not described in tech.requirements
-        K - NIW Average Age - not described in tech.requirements
+        F - MIT Count
+        G - MIW Added
+        H - MIW Completed
+        I - MIW Average Age
+        J - MIW Count
+
+        K - NIW Added
+        L - NIW Completed
+        M - NIW Average Age
 
         :return: self.output_new_data_list: [
         {'cell_label': 'C', 'value': 123},
@@ -256,22 +266,28 @@ class AsanaSeriesMetrics:
         mit_average_age = self.mit_miw_average_age_by_day(mit_incomplete_tasks, 'Most Important Today')
         self.output_data.append({'cell_label': 'E', 'value': mit_average_age})
 
+        # mit_count: F-column
+        self.output_data.append({'cell_label': 'F', 'value': len(mit_tasks)})
+
         # # MIW Tasks
         miw_tasks = list(self.get_tasks_by_tag_id(self.miw_tag_id))
 
-        # miw_tasks_added_by_day: F-column
+        # miw_tasks_added_by_day: G-column
         miw_tasks_added_by_day = self.mit_miw_tasks_added_by_day(miw_tasks, 'Most Important This Week')
-        self.output_data.append({'cell_label': 'F', 'value': miw_tasks_added_by_day})
+        self.output_data.append({'cell_label': 'G', 'value': miw_tasks_added_by_day})
 
-        # miw_tasks_completed_by_day: G-column
+        # miw_tasks_completed_by_day: H-column
         miw_tasks_completed_by_day = self.mit_miw_tasks_completed_by_day(miw_tasks)
-        self.output_data.append({'cell_label': 'G', 'value': miw_tasks_completed_by_day})
+        self.output_data.append({'cell_label': 'H', 'value': miw_tasks_completed_by_day})
 
-        # miw_average_age_by_day: H-column
+        # miw_average_age_by_day: I-column
         miw_incomplete_tasks = self.mit_miw_tasks_incompleted_by_day(miw_tasks)
         print("Incomplete MIW tasks #: %d" % len(miw_incomplete_tasks))
         miw_average_age = self.mit_miw_average_age_by_day(miw_incomplete_tasks, 'Most Important This Week')
-        self.output_data.append({'cell_label': 'H', 'value': miw_average_age})
+        self.output_data.append({'cell_label': 'I', 'value': miw_average_age})
+
+        # miw_count: J-column
+        self.output_data.append({'cell_label': 'J', 'value': len(miw_tasks)})
 
         return self.output_data
 
